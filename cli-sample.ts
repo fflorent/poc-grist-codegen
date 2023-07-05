@@ -1,4 +1,4 @@
-import { Grist, RecordsWithoutId } from "./generated/index"
+import { Grist, RecordsWithoutFields, RecordsWithoutId } from "./generated/index"
 import { program } from "commander";
 
 program
@@ -32,7 +32,7 @@ export async function addRecord(fields: object) {
     ]
   };
 
-  await myGrist.records.addRecords({
+  return myGrist.records.addRecords({
     tableId: opts.tableId,
     docId: opts.docId,
     requestBody: records
@@ -43,6 +43,9 @@ if (require.main === module) {
   if (!opts.recordToAdd) {
     listRecords();
   } else {
-    addRecord(JSON.parse(opts.recordToAdd))
+    addRecord(JSON.parse(opts.recordToAdd)).then((rec: RecordsWithoutFields) => {
+      console.log("Record added successfully with ID %d", rec.records[0].id);
+    });
+
   }
 }
