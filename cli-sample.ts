@@ -46,6 +46,5 @@ if (require.main === module) {
     addRecord(JSON.parse(opts.recordToAdd)).then((rec: RecordsWithoutFields) => {
       console.log("Record added successfully with ID %d", rec.records[0].id);
     });
-
   }
 }

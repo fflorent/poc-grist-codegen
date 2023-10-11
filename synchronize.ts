@@ -13,6 +13,7 @@ import fetch from "node-fetch";
 program
   .requiredOption("-b, --bearer <bearer>", "the API key")
   .requiredOption("-s, --source <docId>", "the source document", "aW2PUNfpyxML")
+  .option('-u, --url <url>', 'the url of the api', 'http://localhost:8484/api')
   .requiredOption(
     "-d, --destination <destination>",
     "the destination document",
@@ -23,7 +24,7 @@ program.parse();
 
 const opts = program.opts();
 
-const baseApiUrl = "http://localhost:8484/api";
+const baseApiUrl = opts.url;
 
 const myGrist = new Grist({
   BASE: baseApiUrl,
@@ -199,13 +200,13 @@ async function replaceRecords(tableName: string, sourceColumns: ColumnsList) {
   const formulaColumnIds = sourceColumns
     .columns!.filter((col) => col.fields?.isFormula)
     .map((col) => col.id);
+  const fieldsToOmit = new Set([...formulaColumnIds]);
 
   const sourceIdLookup = await SourceIdLookup.build(
     sourceColumns,
     SOURCE_DOC,
     DEST_DOC
   );
-  const fieldsToOmit = new Set([...formulaColumnIds]);
 
   const destRecords = (
     await myGrist.records.listRecords({
@@ -237,12 +238,14 @@ async function replaceRecords(tableName: string, sourceColumns: ColumnsList) {
       ),
       {
         ...Object.fromEntries(
-          sourceColumns.columns!.map(({ id: colId }) => {
-            return [
-              colId,
-              sourceRecs.records!.map((rec) => rec.fields[colId!]),
-            ];
-          })
+          sourceColumns.columns!
+            .filter(({id}) => !fieldsToOmit.has(id))
+            .map(({ id: colId }) => {
+              return [
+                colId,
+                sourceRecs.records!.map((rec) => rec.fields[colId!]),
+              ];
+            })
         ),
         gristHelper_sourceId: sourceRecs.records.map((rec) => rec.id),
         // FIXME sourceIdLookup.dump
