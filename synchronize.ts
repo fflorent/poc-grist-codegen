@@ -51,6 +51,17 @@ async function getColumnById(docId: string, tableId: string, id: string) {
   return columns?.find((col) => col.id === id);
 }
 
+/**
+ * This class is meant to populate the reference columns.
+ * For each record id from the source table returns the corresponding id of the target table .
+ */
+class SourceIdLookup2 {
+
+}
+
+/*
+ * This class is responsible for mapping the id in a reference column to the id in the destination document given the value of the reference column in the source document.
+ */
 class SourceIdLookup {
   private constructor(private map: Map<string, Map<number, number>>) {}
 
@@ -135,14 +146,25 @@ async function synchronize(tableName: string) {
             createFields.visibleCol = (
               await getColumnById(DEST_DOC, table, visibleColId)
             )?.fields?.colRef;
+            // The displayColId, at the contrary of the visibleColId, refers to an hidden column existing in the
+            // same table as the reference column, and the column name is gristHelper_Display[1/2/3]
+            // FIXME: For some reasons, the API won't create the gristHelper_Display column. Is this because we call `AddVisibleColumn`?
             const displayColId = (await getColumnByRef(
               SOURCE_DOC,
               tableName,
               createFields.displayCol
             ))!.id!;
+            console.log('displayColId = ', displayColId);
             createFields.displayCol = (
               await getColumnById(DEST_DOC, tableName, displayColId)
             )?.fields?.colRef;
+            console.log('createFields.displayCol = ', createFields.displayCol);
+          }
+          // This prevent an error when submitting twice the same data
+          // FIXME rather bring the rules from the source document and transform the IDs to reference the ones in the target table
+          if (createFields.rules) {
+            console.log('createFields.rules = ', createFields.rules);
+            createFields.rules = null;
           }
           return {
             id: id!,
@@ -152,10 +174,11 @@ async function synchronize(tableName: string) {
       )),
       {
         id: "gristHelper_sourceId",
-        fields: { type: Fields.type.NUMERIC },
+        fields: { type: Fields.type.INT },
       },
     ],
   };
+  console.log('columnsToSend.columns! = ', columnsToSend.columns!);
 
   await myGrist.columns.replaceColumns({
     docId: DEST_DOC,
